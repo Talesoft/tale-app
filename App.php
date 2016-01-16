@@ -4,6 +4,7 @@ namespace Tale\Runtime;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tale\Http\Factory;
 use Tale\Http\Response;
 use Tale\Http\ServerRequest;
 
@@ -27,13 +28,10 @@ class App implements MiddlewareInterface
     }
 
     public function dispatch(
-        ServerRequestInterface $request = null,
-        ResponseInterface $response = null
+        ServerRequestInterface $request,
+        ResponseInterface $response
     )
     {
-
-        $request = $request ? $request : new ServerRequest();
-        $response = $response ? $response : new Response();
 
         $current = 0;
         $next = function(
@@ -49,6 +47,12 @@ class App implements MiddlewareInterface
         };
 
         return $next($request, $response);
+    }
+
+    public function run()
+    {
+
+        return $this->dispatch(Factory::getServerRequest(), new Response());
     }
 
     public function __invoke(
