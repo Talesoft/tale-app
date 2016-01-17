@@ -1,10 +1,9 @@
 <?php
 
-namespace Tale\Http\Test;
+namespace Tale\Test\Runtime;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Tale\Http\Emitter;
 use Tale\Runtime\App;
 use Tale\Runtime\MiddlewareInterface;
 
