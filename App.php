@@ -22,6 +22,11 @@ class App implements MiddlewareInterface
     public function with(callable $middleware)
     {
 
+        if (!is_callable($middleware))
+            throw new \InvalidArgumentException(
+                "Argument 1 passed to App->with needs to be valid callback"
+            );
+
         $app = clone $this;
         $app->_middlewares[] = $middleware;
 
@@ -44,7 +49,7 @@ class App implements MiddlewareInterface
                 return $response;
 
             $middleware = $this->_middlewares[$current++];
-            return $middleware($request, $response, $next);
+            return call_user_func($middleware, $request, $response, $next);
         };
 
         return $next($request, $response);
