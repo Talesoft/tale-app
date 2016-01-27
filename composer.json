@@ -4,12 +4,8 @@
     "keywords": ["controller", "mvc", "app", "config"],
     "description": "A PHP library implementing the Controller-pattern and a simple App-model",
     "license": "MIT",
-    "homepage": "http://runtime.talesoft.io",
+    "homepage": "http://runtime.tale.talesoft.io",
     "authors": [
-        {
-            "name": "Tale HTTP Community",
-            "homepage": "https://github.com/Talesoft/tale-runtime/graphs/contributors"
-        },
         {
             "name": "Talesoft",
             "homepage": "http://talesoft.io",

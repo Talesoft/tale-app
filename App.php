@@ -22,9 +22,10 @@ class App implements MiddlewareInterface
     public function with(callable $middleware)
     {
 
-        $this->_middlewares[] = $middleware;
+        $app = clone $this;
+        $app->_middlewares[] = $middleware;
 
-        return $this;
+        return $app;
     }
 
     public function dispatch(
