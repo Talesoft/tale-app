@@ -8,17 +8,32 @@ use Tale\Http\Factory;
 use Tale\Http\Response;
 use Tale\Http\ServerRequest;
 
+/**
+ * Class App
+ * @package Tale\Runtime
+ */
 class App implements MiddlewareInterface
 {
 
+    /**
+     * @var callable[]
+     */
     private $_middlewares;
 
+    /**
+     *
+     */
     public function __construct()
     {
 
         $this->_middlewares = [];
     }
 
+    /**
+     * @param callable $middleware
+     *
+     * @return App
+     */
     public function with(callable $middleware)
     {
 
@@ -33,6 +48,12 @@ class App implements MiddlewareInterface
         return $app;
     }
 
+    /**
+     * @param ServerRequestInterface $request
+     * @param ResponseInterface      $response
+     *
+     * @return ResponseInterface|mixed
+     */
     public function dispatch(
         ServerRequestInterface $request,
         ResponseInterface $response
@@ -55,12 +76,22 @@ class App implements MiddlewareInterface
         return $next($request, $response);
     }
 
+    /**
+     * @return ResponseInterface|mixed
+     */
     public function run()
     {
 
         return $this->dispatch(Factory::getServerRequest(), new Response());
     }
 
+    /**
+     * @param ServerRequestInterface $request
+     * @param ResponseInterface      $response
+     * @param callable               $next
+     *
+     * @return ResponseInterface|mixed
+     */
     public function __invoke(
         ServerRequestInterface $request,
         ResponseInterface $response,
