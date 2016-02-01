@@ -1,12 +1,14 @@
 <?php
 
-namespace Tale\Runtime;
+namespace Tale;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tale\App\MiddlewareInterface;
+use Tale\App\MiddlewareTrait;
 use Tale\Http\Factory;
 use Tale\Http\Response;
-use Tale\Http\ServerRequest;
+use Tale\Runtime\Middleware\Queue;
 
 /**
  * Class App
@@ -14,9 +16,10 @@ use Tale\Http\ServerRequest;
  */
 class App implements MiddlewareInterface
 {
+    use MiddlewareTrait;
 
     /**
-     * @var callable[]
+     * @var Queue
      */
     private $_middlewares;
 
@@ -26,7 +29,13 @@ class App implements MiddlewareInterface
     public function __construct()
     {
 
-        $this->_middlewares = [];
+        $this->_middlewares = new Queue();
+    }
+
+    public function __clone()
+    {
+
+        $this->_middlewares = clone $this->_middlewares;
     }
 
     /**
@@ -34,72 +43,26 @@ class App implements MiddlewareInterface
      *
      * @return App
      */
-    public function with(callable $middleware)
+    public function add($middleware)
     {
 
-        if (!is_callable($middleware))
-            throw new \InvalidArgumentException(
-                "Argument 1 passed to App->with needs to be valid callback"
-            );
+        $this->_middlewares->enqueue($middleware);
 
-        $app = clone $this;
-        $app->_middlewares[] = $middleware;
-
-        return $app;
+        return $this;
     }
 
-    /**
-     * @param ServerRequestInterface $request
-     * @param ResponseInterface      $response
-     *
-     * @return ResponseInterface|mixed
-     */
-    public function dispatch(
+    public function invoke(
         ServerRequestInterface $request,
         ResponseInterface $response
     )
     {
 
-        $current = 0;
-        $next = function(
-            ServerRequestInterface $request,
-            ResponseInterface $response
-        ) use(&$current, &$next) {
-
-            if ($current >= count($this->_middlewares))
-                return $response;
-
-            $middleware = $this->_middlewares[$current++];
-            return call_user_func($middleware, $request, $response, $next);
-        };
-
-        return $next($request, $response);
+        return $this->_middlewares->invoke($request, $response);
     }
 
-    /**
-     * @return ResponseInterface|mixed
-     */
     public function run()
     {
 
-        return $this->dispatch(Factory::getServerRequest(), new Response());
-    }
-
-    /**
-     * @param ServerRequestInterface $request
-     * @param ResponseInterface      $response
-     * @param callable               $next
-     *
-     * @return ResponseInterface|mixed
-     */
-    public function __invoke(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        callable $next
-    )
-    {
-
-        $response = $this->dispatch($request, $response);
-        return $next($request, $response);
+        return $this->invoke(Factory::getServerRequest(), new Response());
     }
 }

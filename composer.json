@@ -1,10 +1,10 @@
 {
-    "name": "talesoft/tale-runtime",
+    "name": "talesoft/tale-app",
     "type": "library",
     "keywords": ["controller", "mvc", "app", "config"],
     "description": "A PHP library implementing the Controller-pattern and a simple App-model",
     "license": "MIT",
-    "homepage": "http://runtime.tale.talesoft.io",
+    "homepage": "http://app.tale.talesoft.io",
     "authors": [
         {
             "name": "Talesoft",
@@ -27,7 +27,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Tale\\Runtime\\": ""
+            "Tale\\": ""
         }
     }
 }

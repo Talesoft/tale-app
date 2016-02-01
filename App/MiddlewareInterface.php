@@ -1,6 +1,6 @@
 <?php
 
-namespace Tale\Runtime;
+namespace Tale\App;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;

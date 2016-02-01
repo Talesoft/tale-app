@@ -4,8 +4,8 @@ namespace Tale\Test\Runtime;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Tale\Runtime\App;
-use Tale\Runtime\MiddlewareInterface;
+use Tale\App;
+use Tale\App\MiddlewareInterface;
 
 class HelloMiddleware implements MiddlewareInterface
 {
@@ -62,9 +62,9 @@ class AppTest extends \PHPUnit_Framework_TestCase
 
 
         $this->assertEquals('Hello fucking World!',
-            (string)$app->with(new HelloMiddleware())
-                ->with(new WorldMiddleware())
-                ->with(new FuckingMiddleware())
+            (string)$app->add(new HelloMiddleware())
+                ->add(new WorldMiddleware())
+                ->add(new FuckingMiddleware())
                 ->run()->getBody()
         );
     }
