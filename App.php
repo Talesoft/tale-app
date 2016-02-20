@@ -8,7 +8,7 @@ use Tale\App\MiddlewareInterface;
 use Tale\App\MiddlewareTrait;
 use Tale\Http\Factory;
 use Tale\Http\Response;
-use Tale\Runtime\Middleware\Queue;
+use Tale\App\Middleware\Queue;
 
 /**
  * Class App
