@@ -6,6 +6,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tale\App\MiddlewareInterface;
 use Tale\App\MiddlewareTrait;
+use Tale\Http\Emitter;
 use Tale\Http\Factory;
 use Tale\Http\Response;
 use Tale\App\Middleware\Queue;
@@ -64,5 +65,11 @@ class App implements MiddlewareInterface
     {
 
         return $this->invoke(Factory::getServerRequest(), new Response());
+    }
+
+    public function display()
+    {
+
+        Emitter::emit($this->run());
     }
 }
