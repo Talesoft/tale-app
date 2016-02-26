@@ -1,6 +1,6 @@
 <?php
 
-namespace Tale\Test\Runtime;
+namespace Tale\Test;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -62,9 +62,9 @@ class AppTest extends \PHPUnit_Framework_TestCase
 
 
         $this->assertEquals('Hello fucking World!',
-            (string)$app->add(new HelloMiddleware())
-                ->add(new WorldMiddleware())
-                ->add(new FuckingMiddleware())
+            (string)$app->useMiddleware(new HelloMiddleware())
+                ->useMiddleware(new WorldMiddleware())
+                ->useMiddleware(new FuckingMiddleware())
                 ->run()->getBody()
         );
     }

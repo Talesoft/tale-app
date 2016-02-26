@@ -8,7 +8,7 @@ use Psr\Http\Message\ServerRequestInterface;
 interface MiddlewareInterface
 {
 
-    public function __invoke(
+    public function handleRequest(
         ServerRequestInterface $request,
         ResponseInterface $response,
         callable $next

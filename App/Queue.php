@@ -14,7 +14,6 @@ use Tale\App\MiddlewareTrait;
  */
 class Queue extends SplQueue implements MiddlewareInterface
 {
-    use MiddlewareTrait;
 
     /**
      * @param ServerRequestInterface $request
@@ -22,7 +21,7 @@ class Queue extends SplQueue implements MiddlewareInterface
      *
      * @return ResponseInterface|mixed
      */
-    public function invoke(
+    public function dispatch(
         ServerRequestInterface $request,
         ResponseInterface $response
     )
@@ -43,5 +42,22 @@ class Queue extends SplQueue implements MiddlewareInterface
         };
 
         return $next($request, $response);
+    }
+
+    /**
+     * @param ServerRequestInterface $request
+     * @param ResponseInterface      $response
+     * @param callable $next
+     *
+     * @return ResponseInterface|mixed
+     */
+    public function handleRequest(
+        ServerRequestInterface $request,
+        ResponseInterface $response,
+        callable $next
+    )
+    {
+
+        return $next($request, $this->dispatch($request, $response));
     }
 }

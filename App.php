@@ -17,7 +17,6 @@ use Tale\App\Middleware\Queue;
  */
 class App implements MiddlewareInterface
 {
-    use MiddlewareTrait;
 
     /**
      * @var Queue
@@ -40,11 +39,11 @@ class App implements MiddlewareInterface
     }
 
     /**
-     * @param callable $middleware
+     * @param MiddlewareInterface $middleware
      *
-     * @return App
+     * @return $this
      */
-    public function add($middleware)
+    public function useMiddleware(MiddlewareInterface $middleware)
     {
 
         $this->_middlewares->enqueue($middleware);
@@ -52,24 +51,34 @@ class App implements MiddlewareInterface
         return $this;
     }
 
-    public function invoke(
+    public function handleRequest(
         ServerRequestInterface $request,
-        ResponseInterface $response
+        ResponseInterface $response,
+        callable $next
     )
     {
 
-        return $this->_middlewares->invoke($request, $response);
+        return $this->_middlewares->handleRequest($request, $response, $next);
     }
 
-    public function run()
+    public function dispatch(
+        ServerRequestInterface $request = null,
+        ResponseInterface $response = null
+    )
     {
 
-        return $this->invoke(Factory::getServerRequest(), new Response());
+        $request = $request ?: Http::getServerRequest();
+        $response = $response ?: new Response();
+
+        return $this->_middlewares->dispatch($request, $response);
     }
 
-    public function display()
+    public function display(
+        ServerRequestInterface $request = null,
+        ResponseInterface $response = null
+    )
     {
 
-        Emitter::emit($this->run());
+        Http::emit($this->dispatch($request, $response));
     }
 }
