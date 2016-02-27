@@ -3,53 +3,86 @@
 namespace Tale\Test;
 
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
 use Tale\App;
-use Tale\App\MiddlewareInterface;
+use Tale\App\PluginInterface;
+use Tale\App\PluginTrait;
+use Tale\Stream\StringStream;
 
-class HelloMiddleware implements MiddlewareInterface
+class Model implements PluginInterface
 {
+    use PluginTrait;
 
-    public function __invoke(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        callable $next
-    )
+    public function getData()
     {
-        $response->getBody()->write('Hello ');
 
-        return $next($request, $response);
+        return '{Data from Model}';
     }
 }
 
-class WorldMiddleware implements MiddlewareInterface
+class Database implements PluginInterface
 {
+    use PluginTrait;
 
-    public function __invoke(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        callable $next
-    )
+    public function getData()
     {
-        $response = $next($request, $response);
-        $response->getBody()->write('World!');
-        return $response;
+
+        return '{Data from Database}';
     }
 }
 
-class FuckingMiddleware implements MiddlewareInterface
+class Renderer implements PluginInterface
 {
+    use PluginTrait;
 
-    public function __invoke(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        callable $next
-    )
+    public function render(array $data)
     {
-        $response->getBody()->write('fucking ');
-        return $next($request, $response);
+
+        return implode(', ', $data);
+    }
+
+    public function handle()
+    {
+
+        $this->setResponse(
+            $this->getResponse()->withStatus(301, 'It works!')
+        );
+
+        return $this->next();
     }
 }
+
+class Controller implements PluginInterface
+{
+    use PluginTrait;
+
+    public $database;
+
+    public function __construct(Database $database)
+    {
+
+        $this->database = $database;
+    }
+
+    protected function handle()
+    {
+
+        $data = [];
+        $data[] = $this->database->getData();
+
+        if ($this->has(Model::class))
+            $data[] = $this->get(Model::class)->getData();
+
+        $this->setResponse(
+            $this->getResponse()
+                ->withBody(new StringStream(
+                    $this->get(Renderer::class)->render($data)
+                ))
+        );
+
+        return $this->next();
+    }
+}
+
 
 class AppTest extends \PHPUnit_Framework_TestCase
 {
@@ -57,15 +90,17 @@ class AppTest extends \PHPUnit_Framework_TestCase
     public function testMiddleware()
     {
 
-        $app = new App();
 
+        $app = new App(['path' => __DIR__]);
+        $app->useMiddleware(function($request, ResponseInterface $response, $next) {
 
+            return $next($request, $response->withHeader('test', 'test value'));
+        });
+        $response = $app->dispatch();
 
-        $this->assertEquals('Hello fucking World!',
-            (string)$app->useMiddleware(new HelloMiddleware())
-                ->useMiddleware(new WorldMiddleware())
-                ->useMiddleware(new FuckingMiddleware())
-                ->run()->getBody()
-        );
+        $this->assertEquals(301, $response->getStatusCode());
+        $this->assertEquals('It works!', $response->getReasonPhrase());
+        $this->assertEquals('{Data from Database}, {Data from Model}', (string)$response->getBody());
+        $this->assertEquals('test value', $response->getHeaderLine('test'));
     }
 }

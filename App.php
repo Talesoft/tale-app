@@ -4,61 +4,85 @@ namespace Tale;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Tale\App\MiddlewareInterface;
-use Tale\App\MiddlewareTrait;
-use Tale\Http\Emitter;
-use Tale\Http\Factory;
+use Tale\App\Environment;
+use Tale\App\Plugin\Middleware;
+use Tale\App\PluginInterface;
+use Tale\App\PluginTrait;
+use Tale\Di\ContainerInterface;
+use Tale\Di\ContainerTrait;
 use Tale\Http\Response;
-use Tale\App\Middleware\Queue;
+use Tale\Http\Runtime\MiddlewareInterface;
+use Tale\Http\Runtime\Queue;
 
 /**
  * Class App
  * @package Tale\Runtime
  */
-class App implements MiddlewareInterface
+class App implements MiddlewareInterface, ContainerInterface, ConfigurableInterface, PluginInterface
 {
+    use ContainerTrait;
+    use ConfigurableTrait;
+    use PluginTrait;
+
+    private $_environment;
 
     /**
      * @var Queue
      */
-    private $_middlewares;
+    private $_middlewareQueue;
 
     /**
-     *
+     * @param array $options
      */
-    public function __construct()
+    public function __construct(array $options = null)
     {
 
-        $this->_middlewares = new Queue();
+        $this->_environment = new Environment($options);
+
+        $this->defineOptions([
+            'middlewares' => [],
+            'plugins' => []
+        ], $this->_environment->getOptions());
+
+        $this->interpolateOptions();
+
+        $this->_middlewareQueue = new Queue();
+
+        foreach ($this->getOption('middlewares') as $middleware)
+            $this->useMiddleware($middleware);
+
+        foreach ($this->getOption('plugins') as $plugin)
+            $this->usePlugin($plugin);
     }
 
     public function __clone()
     {
 
-        $this->_middlewares = clone $this->_middlewares;
+        $this->_middlewareQueue = clone $this->_middlewareQueue;
     }
 
     /**
-     * @param MiddlewareInterface $middleware
+     * @param callable $middleware
      *
      * @return $this
      */
-    public function useMiddleware(MiddlewareInterface $middleware)
+    public function useMiddleware($middleware)
     {
 
-        $this->_middlewares->enqueue($middleware);
+        $this->_middlewareQueue->enqueue($middleware);
 
         return $this;
     }
 
-    public function handleRequest(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        callable $next
-    )
+    /**
+     * @param string $className
+     *
+     * @return $this
+     */
+    public function usePlugin($className)
     {
 
-        return $this->_middlewares->handleRequest($request, $response, $next);
+        return $this->useMiddleware(new Middleware($this, $className));
     }
 
     public function dispatch(
@@ -70,7 +94,7 @@ class App implements MiddlewareInterface
         $request = $request ?: Http::getServerRequest();
         $response = $response ?: new Response();
 
-        return $this->_middlewares->dispatch($request, $response);
+        return $this->_middlewareQueue->dispatch($request, $response);
     }
 
     public function display(
@@ -80,5 +104,26 @@ class App implements MiddlewareInterface
     {
 
         Http::emit($this->dispatch($request, $response));
+    }
+
+    protected function handle()
+    {
+
+        $this->setResponse($this->dispatch(
+            $this->getRequest(),
+            $this->getResponse()
+        ));
+
+        return $this->next();
+    }
+
+    public function __invoke(
+        ServerRequestInterface $request,
+        ResponseInterface $response,
+        callable $next
+    )
+    {
+
+        return $this->_middlewareQueue->__invoke($request, $response, $next);
     }
 }
