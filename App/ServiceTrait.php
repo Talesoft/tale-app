@@ -68,6 +68,15 @@ trait ServiceTrait
     }
 
     /**
+     * @return callable
+     */
+    protected function getNext()
+    {
+
+        return $this->_next;
+    }
+
+    /**
      * @param RequestInterface $request
      * @param ResponseInterface $response
      *

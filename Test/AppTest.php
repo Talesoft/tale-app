@@ -85,7 +85,7 @@ class AppTest extends \PHPUnit_Framework_TestCase
     {
 
         $app = new App(['path' => __DIR__]);
-        $app->useMiddleware(function($request, ResponseInterface $response, $next) {
+        $app->append(function($request, ResponseInterface $response, $next) {
 
             return $next($request, $response->withHeader('test', 'test value'));
         });
