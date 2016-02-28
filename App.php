@@ -5,22 +5,22 @@ namespace Tale;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tale\App\Environment;
-use Tale\App\ServiceInterface;
-use Tale\App\ServiceTrait;
+use Tale\Di\Container\DedicatedTrait;
 use Tale\Di\ContainerInterface;
-use Tale\Di\ContainerTrait;
 use Tale\Http\Runtime;
-use Tale\Http\Runtime\Queue;
+use Tale\Http\Runtime\Middleware\Queue;
+use Tale\Http\Runtime\MiddlewareInterface;
+use Tale\Http\Runtime\MiddlewareTrait;
 
 /**
  * Class App
  * @package Tale\Runtime
  */
-class App implements ContainerInterface, ConfigurableInterface, ServiceInterface
+class App implements ContainerInterface, ConfigurableInterface, MiddlewareInterface
 {
-    use ContainerTrait;
+    use DedicatedTrait;
     use ConfigurableTrait;
-    use ServiceTrait;
+    use MiddlewareTrait;
 
     private $_environment;
 
@@ -39,19 +39,15 @@ class App implements ContainerInterface, ConfigurableInterface, ServiceInterface
 
         $this->defineOptions([
             'middlewares' => [],
-            'services' => []
         ], $this->_environment->getOptions());
 
         $this->interpolateOptions();
-        $this->registerContainer();
+        $this->registerSelf();
 
         $this->_middlewareQueue = new Queue();
 
         foreach ($this->getOption('middlewares') as $middleware)
             $this->append($middleware);
-
-        foreach ($this->getOption('services') as $service)
-            $this->appendService($service);
     }
 
     public function __clone()
@@ -76,6 +72,33 @@ class App implements ContainerInterface, ConfigurableInterface, ServiceInterface
         return $this->_middlewareQueue;
     }
 
+    private function _filterMiddleware($middleware)
+    {
+
+        if (is_string($middleware)) {
+
+            if (function_exists($middleware))
+                return $middleware;
+
+            if (!class_exists($middleware))
+                throw new \RuntimeException(
+                    "Failed to register middleware: Class $middleware doesnt exist"
+                );
+
+            if (!$this->has($middleware))
+                $this->register($middleware);
+
+            return function($request, $response, $next) use ($middleware) {
+
+                /** @var MiddlewareInterface $mw */
+                $mw = $this->get($middleware);
+                return $mw($request, $response, $next);
+            };
+        }
+
+        return $middleware;
+    }
+
     /**
      * @param callable $middleware
      *
@@ -84,7 +107,9 @@ class App implements ContainerInterface, ConfigurableInterface, ServiceInterface
     public function append($middleware)
     {
 
-        $this->_middlewareQueue->append($middleware);
+        $this->_middlewareQueue->append(
+            $this->_filterMiddleware($middleware)
+        );
 
         return $this;
     }
@@ -97,58 +122,20 @@ class App implements ContainerInterface, ConfigurableInterface, ServiceInterface
     public function prepend($middleware)
     {
 
-        $this->_middlewareQueue->prepend($middleware);
+        $this->_middlewareQueue->prepend(
+            $this->_filterMiddleware($middleware)
+        );
 
         return $this;
     }
 
-    /**
-     * @param string $className
-     *
-     * @return $this
-     */
-    public function appendService($className)
-    {
-
-        return $this->append($this->createServiceMiddleware($className));
-    }
-
-    /**
-     * @param string $className
-     *
-     * @return $this
-     */
-    public function prependService($className)
-    {
-
-        return $this->prepend($this->createServiceMiddleware($className));
-    }
-
-    public function createServiceMiddleware($className)
-    {
-
-        if (!is_subclass_of($className, ServiceInterface::class))
-            throw new \InvalidArgumentException(
-                "Failed to add service $className: ".
-                "Service is not a valid ".ServiceInterface::class." instance"
-            );
-
-        $this->register($className);
-        return function($request, $response, $next) use ($className) {
-
-            /** @var ServiceInterface $service */
-            $service = $this->get($className);
-            return $service($request, $response, $next);
-        };
-    }
-
-    public function dispatch(
+    public function run(
         ServerRequestInterface $request = null,
         ResponseInterface $response = null
     )
     {
 
-        return Runtime::dispatch($this->_middlewareQueue, $request, $response);
+        return Runtime::run($this->_middlewareQueue, $request, $response);
     }
 
     public function display(
@@ -157,18 +144,18 @@ class App implements ContainerInterface, ConfigurableInterface, ServiceInterface
     )
     {
 
-        Runtime::emit($this->_middlewareQueue, $request, $response);
+        Http::emit($this->run($request, $response));
     }
 
     /**
-     * @overrides ServiceTrait->handle
+     * @overrides MiddlewareTrait->handleRequest
      *
      * @return \Psr\Http\Message\ResponseInterface
      */
-    protected function handle()
+    protected function handleRequest()
     {
 
-        return $this->next(null, $this->dispatch(
+        return $this->handleNext(null, $this->run(
             $this->getRequest(),
             $this->getResponse()
         ));

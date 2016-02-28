@@ -4,23 +4,24 @@ namespace Tale\Test;
 
 use Psr\Http\Message\ResponseInterface;
 use Tale\App;
-use Tale\App\ServiceTrait;
+use Tale\Http\Runtime\MiddlewareInterface;
+use Tale\Http\Runtime\MiddlewareTrait;
 use Tale\Stream\StringStream;
 
-class Model implements App\ServiceInterface
+class Model implements MiddlewareInterface
 {
-    use ServiceTrait;
+    use MiddlewareTrait;
 
     public function getData()
     {
-
+        
         return '{Data from Model}';
     }
 }
 
-class Database implements App\ServiceInterface
+class Database implements MiddlewareInterface
 {
-    use ServiceTrait;
+    use MiddlewareTrait;
 
     public function getData()
     {
@@ -29,9 +30,9 @@ class Database implements App\ServiceInterface
     }
 }
 
-class Renderer implements App\ServiceInterface
+class Renderer implements MiddlewareInterface
 {
-    use ServiceTrait;
+    use MiddlewareTrait;
 
     public function render(array $data)
     {
@@ -39,16 +40,16 @@ class Renderer implements App\ServiceInterface
         return implode(', ', $data);
     }
 
-    protected function handle()
+    protected function handleRequest()
     {
 
-        return $this->next(null, $this->getResponse()->withStatus(301, 'It works!'));
+        return $this->handleNext(null, $this->getResponse()->withStatus(301, 'It works!'));
     }
 }
 
-class Controller implements App\ServiceInterface
+class Controller implements MiddlewareInterface
 {
-    use ServiceTrait;
+    use MiddlewareTrait;
 
     public $database;
     /** @var App $_app */
@@ -61,7 +62,7 @@ class Controller implements App\ServiceInterface
         $this->_app = $app;
     }
 
-    protected function handle()
+    protected function handleRequest()
     {
 
         $data = [];
@@ -70,7 +71,7 @@ class Controller implements App\ServiceInterface
         if ($this->_app->has(Model::class))
             $data[] = $this->_app->get(Model::class)->getData();
 
-        return $this->next(null, $this->getResponse()
+        return $this->handleNext(null, $this->getResponse()
             ->withBody(new StringStream(
                 $this->_app->get(Renderer::class)->render($data)
         )));
@@ -89,7 +90,7 @@ class AppTest extends \PHPUnit_Framework_TestCase
 
             return $next($request, $response->withHeader('test', 'test value'));
         });
-        $response = $app->dispatch();
+        $response = $app->run();
 
         $this->assertEquals(301, $response->getStatusCode());
         $this->assertEquals('It works!', $response->getReasonPhrase());
