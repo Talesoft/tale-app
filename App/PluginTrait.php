@@ -39,28 +39,6 @@ trait PluginTrait
     }
 
     /**
-     * @param $className
-     *
-     * @return bool
-     */
-    protected function hasPlugin($className)
-    {
-
-        return $this->_app->hasPlugin($className);
-    }
-
-    /**
-     * @param $className
-     *
-     * @return object
-     */
-    protected function getPlugin($className)
-    {
-
-        return $this->_app->getPlugin($className);
-    }
-
-    /**
      * @return ServerRequestInterface
      */
     protected function getRequest()
