@@ -4,13 +4,12 @@ namespace Tale\Test;
 
 use Psr\Http\Message\ResponseInterface;
 use Tale\App;
-use Tale\App\PluginInterface;
-use Tale\App\PluginTrait;
+use Tale\App\ServiceTrait;
 use Tale\Stream\StringStream;
 
-class Model implements PluginInterface
+class Model implements App\ServiceInterface
 {
-    use PluginTrait;
+    use ServiceTrait;
 
     public function getData()
     {
@@ -19,9 +18,9 @@ class Model implements PluginInterface
     }
 }
 
-class Database implements PluginInterface
+class Database implements App\ServiceInterface
 {
-    use PluginTrait;
+    use ServiceTrait;
 
     public function getData()
     {
@@ -30,9 +29,9 @@ class Database implements PluginInterface
     }
 }
 
-class Renderer implements PluginInterface
+class Renderer implements App\ServiceInterface
 {
-    use PluginTrait;
+    use ServiceTrait;
 
     public function render(array $data)
     {
@@ -40,27 +39,26 @@ class Renderer implements PluginInterface
         return implode(', ', $data);
     }
 
-    public function handle()
+    protected function handle()
     {
 
-        $this->setResponse(
-            $this->getResponse()->withStatus(301, 'It works!')
-        );
-
-        return $this->next();
+        return $this->next(null, $this->getResponse()->withStatus(301, 'It works!'));
     }
 }
 
-class Controller implements PluginInterface
+class Controller implements App\ServiceInterface
 {
-    use PluginTrait;
+    use ServiceTrait;
 
     public $database;
+    /** @var App $_app */
+    private $_app;
 
-    public function __construct(Database $database)
+    public function __construct(App $app, Database $database)
     {
 
         $this->database = $database;
+        $this->_app = $app;
     }
 
     protected function handle()
@@ -69,17 +67,13 @@ class Controller implements PluginInterface
         $data = [];
         $data[] = $this->database->getData();
 
-        if ($this->hasPlugin(Model::class))
-            $data[] = $this->getPlugin(Model::class)->getData();
+        if ($this->_app->has(Model::class))
+            $data[] = $this->_app->get(Model::class)->getData();
 
-        $this->setResponse(
-            $this->getResponse()
-                ->withBody(new StringStream(
-                    $this->getPlugin(Renderer::class)->render($data)
-                ))
-        );
-
-        return $this->next();
+        return $this->next(null, $this->getResponse()
+            ->withBody(new StringStream(
+                $this->_app->get(Renderer::class)->render($data)
+        )));
     }
 }
 
@@ -89,7 +83,6 @@ class AppTest extends \PHPUnit_Framework_TestCase
 
     public function testMiddleware()
     {
-
 
         $app = new App(['path' => __DIR__]);
         $app->useMiddleware(function($request, ResponseInterface $response, $next) {

@@ -2,21 +2,18 @@
 
 namespace Tale\App;
 
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tale\App;
 
 /**
- * Class PluginTrait
+ * Class ServiceTrait
  * @package Tale\App
  */
-trait PluginTrait
+trait ServiceTrait
 {
 
-    /**
-     * @var App
-     */
-    private $_app = null;
     /**
      * @var ServerRequestInterface
      */
@@ -29,14 +26,6 @@ trait PluginTrait
      * @var callable
      */
     private $_next = null;
-
-    /**
-     * @return App
-     */
-    protected function getApp()
-    {
-        return $this->_app;
-    }
 
     /**
      * @return ServerRequestInterface
@@ -79,10 +68,19 @@ trait PluginTrait
     }
 
     /**
+     * @param RequestInterface $request
+     * @param ResponseInterface $response
+     *
      * @return ResponseInterface
      */
-    protected function next()
+    protected function next(RequestInterface $request = null, ResponseInterface $response = null)
     {
+
+        if ($request)
+            $this->_request = $request;
+
+        if ($response)
+            $this->_response = $response;
 
         return call_user_func($this->_next, $this->_request, $this->_response);
     }
@@ -96,26 +94,29 @@ trait PluginTrait
     }
 
     /**
-     * @param App                    $app
      * @param ServerRequestInterface $request
      * @param ResponseInterface      $response
      * @param callable               $next
      *
      * @return ResponseInterface
      */
-    public function invoke(
-        App $app,
+    public function __invoke(
         ServerRequestInterface $request,
         ResponseInterface $response,
         callable $next
     )
     {
 
-        $this->_app = $app;
         $this->_request = $request;
         $this->_response = $response;
         $this->_next = $next;
 
-        return $this->handle();
+        $response = $this->handle();
+
+        $this->_request = null;
+        $this->_response = null;
+        $this->_next = null;
+
+        return $response;
     }
 }

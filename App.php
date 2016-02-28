@@ -5,12 +5,11 @@ namespace Tale;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tale\App\Environment;
-use Tale\App\Plugin\Middleware;
-use Tale\App\PluginInterface;
-use Tale\App\PluginTrait;
+use Tale\App\ServiceInterface;
+use Tale\App\ServiceTrait;
 use Tale\Di\ContainerInterface;
 use Tale\Di\ContainerTrait;
-use Tale\Http\Response;
+use Tale\Http\Runtime;
 use Tale\Http\Runtime\MiddlewareInterface;
 use Tale\Http\Runtime\Queue;
 
@@ -18,18 +17,18 @@ use Tale\Http\Runtime\Queue;
  * Class App
  * @package Tale\Runtime
  */
-class App implements MiddlewareInterface, ContainerInterface, ConfigurableInterface, PluginInterface
+class App implements MiddlewareInterface, ContainerInterface, ConfigurableInterface, ServiceInterface
 {
     use ContainerTrait;
     use ConfigurableTrait;
-    use PluginTrait;
+    use ServiceTrait;
 
     private $_environment;
 
     /**
      * @var Queue
      */
-    private $_middlewareQueue;
+    private $_middlewares;
 
     /**
      * @param array $options
@@ -41,24 +40,25 @@ class App implements MiddlewareInterface, ContainerInterface, ConfigurableInterf
 
         $this->defineOptions([
             'middlewares' => [],
-            'plugins' => []
+            'services' => []
         ], $this->_environment->getOptions());
 
         $this->interpolateOptions();
+        $this->registerContainer();
 
-        $this->_middlewareQueue = new Queue();
+        $this->_middlewares = new Queue();
 
         foreach ($this->getOption('middlewares') as $middleware)
             $this->useMiddleware($middleware);
 
-        foreach ($this->getOption('plugins') as $plugin)
-            $this->usePlugin($plugin);
+        foreach ($this->getOption('services') as $service)
+            $this->useService($service);
     }
 
     public function __clone()
     {
 
-        $this->_middlewareQueue = clone $this->_middlewareQueue;
+        $this->_middlewares = clone $this->_middlewares;
     }
 
     /**
@@ -69,7 +69,7 @@ class App implements MiddlewareInterface, ContainerInterface, ConfigurableInterf
     public function useMiddleware($middleware)
     {
 
-        $this->_middlewareQueue->enqueue($middleware);
+        $this->_middlewares->enqueue($middleware);
 
         return $this;
     }
@@ -79,10 +79,22 @@ class App implements MiddlewareInterface, ContainerInterface, ConfigurableInterf
      *
      * @return $this
      */
-    public function usePlugin($className)
+    public function useService($className)
     {
 
-        return $this->useMiddleware(new Middleware($this, $className));
+        if (!is_subclass_of($className, ServiceInterface::class))
+            throw new \InvalidArgumentException(
+                "Failed to add service $className: ".
+                "Service is not a valid ".ServiceInterface::class." instance"
+            );
+
+        $this->register($className);
+        return $this->useMiddleware(function($request, $response, $next) use ($className) {
+
+            /** @var ServiceInterface $service */
+            $service = $this->get($className);
+            return $service($request, $response, $next);
+        });
     }
 
     public function dispatch(
@@ -91,10 +103,7 @@ class App implements MiddlewareInterface, ContainerInterface, ConfigurableInterf
     )
     {
 
-        $request = $request ?: Http::getServerRequest();
-        $response = $response ?: new Response();
-
-        return $this->_middlewareQueue->dispatch($request, $response);
+        return Runtime::dispatch($this->_middlewares, $request, $response);
     }
 
     public function display(
@@ -103,20 +112,32 @@ class App implements MiddlewareInterface, ContainerInterface, ConfigurableInterf
     )
     {
 
-        Http::emit($this->dispatch($request, $response));
+        Runtime::emit($this->_middlewares, $request, $response);
     }
 
+    /**
+     * @overrides ServiceTrait->handle
+     *
+     * @return \Psr\Http\Message\ResponseInterface
+     */
     protected function handle()
     {
 
-        $this->setResponse($this->dispatch(
+        return $this->next(null, $this->dispatch(
             $this->getRequest(),
             $this->getResponse()
         ));
-
-        return $this->next();
     }
 
+    /**
+     * @implements MiddlewareInterface->__invoke
+     *
+     * @param \Psr\Http\Message\ServerRequestInterface $request
+     * @param \Psr\Http\Message\ResponseInterface      $response
+     * @param callable                                 $next
+     *
+     * @return mixed
+     */
     public function __invoke(
         ServerRequestInterface $request,
         ResponseInterface $response,
@@ -124,6 +145,6 @@ class App implements MiddlewareInterface, ContainerInterface, ConfigurableInterf
     )
     {
 
-        return $this->_middlewareQueue->__invoke($request, $response, $next);
+        return $next($request, $this->dispatch($request, $response));
     }
 }
