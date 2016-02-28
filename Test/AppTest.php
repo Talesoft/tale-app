@@ -69,13 +69,13 @@ class Controller implements PluginInterface
         $data = [];
         $data[] = $this->database->getData();
 
-        if ($this->has(Model::class))
-            $data[] = $this->get(Model::class)->getData();
+        if ($this->hasPlugin(Model::class))
+            $data[] = $this->getPlugin(Model::class)->getData();
 
         $this->setResponse(
             $this->getResponse()
                 ->withBody(new StringStream(
-                    $this->get(Renderer::class)->render($data)
+                    $this->getPlugin(Renderer::class)->render($data)
                 ))
         );
 

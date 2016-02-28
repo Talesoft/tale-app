@@ -55,7 +55,7 @@ class Middleware implements MiddlewareInterface
     )
     {
         /** @var PluginInterface $plugin */
-        $plugin = $this->_app->get($this->_className);
+        $plugin = $this->_app->getPlugin($this->_className);
         return $plugin->invoke(
             $this->_app,
             $request,

@@ -43,10 +43,10 @@ trait PluginTrait
      *
      * @return bool
      */
-    protected function has($className)
+    protected function hasPlugin($className)
     {
 
-        return $this->_app->has($className);
+        return $this->_app->hasPlugin($className);
     }
 
     /**
@@ -54,10 +54,10 @@ trait PluginTrait
      *
      * @return object
      */
-    protected function get($className)
+    protected function getPlugin($className)
     {
 
-        return $this->_app->get($className);
+        return $this->_app->getPlugin($className);
     }
 
     /**
