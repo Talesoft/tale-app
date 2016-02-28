@@ -14,7 +14,7 @@ class Model implements MiddlewareInterface
 
     public function getData()
     {
-        
+
         return '{Data from Model}';
     }
 }

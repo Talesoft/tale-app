@@ -72,7 +72,7 @@ class App implements ContainerInterface, ConfigurableInterface, MiddlewareInterf
         return $this->_middlewareQueue;
     }
 
-    private function _filterMiddleware($middleware)
+    public function prepareMiddleware($middleware)
     {
 
         if (is_string($middleware)) {
@@ -107,9 +107,7 @@ class App implements ContainerInterface, ConfigurableInterface, MiddlewareInterf
     public function append($middleware)
     {
 
-        $this->_middlewareQueue->append(
-            $this->_filterMiddleware($middleware)
-        );
+        $this->_middlewareQueue->append($this->prepareMiddleware($middleware));
 
         return $this;
     }
@@ -122,9 +120,7 @@ class App implements ContainerInterface, ConfigurableInterface, MiddlewareInterf
     public function prepend($middleware)
     {
 
-        $this->_middlewareQueue->prepend(
-            $this->_filterMiddleware($middleware)
-        );
+        $this->_middlewareQueue->prepend($this->prepareMiddleware($middleware));
 
         return $this;
     }
