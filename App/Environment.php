@@ -8,23 +8,22 @@ class Environment
 {
     use ConfigurableTrait;
 
-    const DEFAULT_FILE_NAME = 'env.json';
+    const DEFAULT_NAME = 'env';
 
     public function __construct(array $options = null)
     {
 
         $this->defineOptions([
             'path' => getcwd(),
-            'environmentFileName' => self::DEFAULT_FILE_NAME,
+            'environment' => self::DEFAULT_NAME,
             'paths' => []
         ], $options);
 
-        $path = $this->getOption('path');
+        $path = $this->options['path'];
 
         if (is_dir($path))
-            $path = rtrim($path, '/\\').'/'.$this->getOption('environmentFileName');
+            $path = rtrim($path, '/\\').'/'.$this->options['environment'];
 
-        if (file_exists($path))
-            $this->loadOptions($path);
+        $this->loadOptions($path, true);
     }
 }

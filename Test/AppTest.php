@@ -40,10 +40,10 @@ class Renderer implements MiddlewareInterface
         return implode(', ', $data);
     }
 
-    protected function handleRequest()
+    protected function handleRequest(callable $next)
     {
 
-        return $this->handleNext(null, $this->getResponse()->withStatus(301, 'It works!'));
+        return $next($this->request, $this->response->withStatus(301, 'It works!'));
     }
 }
 
@@ -62,7 +62,7 @@ class Controller implements MiddlewareInterface
         $this->_app = $app;
     }
 
-    protected function handleRequest()
+    protected function handleRequest(callable $next)
     {
 
         $data = [];
@@ -71,10 +71,11 @@ class Controller implements MiddlewareInterface
         if ($this->_app->has(Model::class))
             $data[] = $this->_app->get(Model::class)->getData();
 
-        return $this->handleNext(null, $this->getResponse()
+        return $next($this->request, $this->response
             ->withBody(new StringStream(
                 $this->_app->get(Renderer::class)->render($data)
-        )));
+            ))
+        );
     }
 }
 

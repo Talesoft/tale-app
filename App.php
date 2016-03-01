@@ -22,12 +22,12 @@ class App implements ContainerInterface, ConfigurableInterface, MiddlewareInterf
     use ConfigurableTrait;
     use MiddlewareTrait;
 
-    private $_environment;
+    private $environment;
 
     /**
      * @var Queue
      */
-    private $_middlewareQueue;
+    private $queue;
 
     /**
      * @param array $options
@@ -35,41 +35,41 @@ class App implements ContainerInterface, ConfigurableInterface, MiddlewareInterf
     public function __construct(array $options = null)
     {
 
-        $this->_environment = new Environment($options);
+        $this->environment = new Environment($options);
 
         $this->defineOptions([
-            'middlewares' => [],
-        ], $this->_environment->getOptions());
+            'middleware' => [],
+        ], $this->environment->getOptions());
 
         $this->interpolateOptions();
         $this->registerSelf();
 
-        $this->_middlewareQueue = new Queue();
+        $this->queue = new Queue();
 
-        foreach ($this->getOption('middlewares') as $middleware)
+        foreach ($this->options['middleware'] as $middleware)
             $this->append($middleware);
     }
 
     public function __clone()
     {
 
-        $this->_middlewareQueue = clone $this->_middlewareQueue;
+        $this->queue = clone $this->queue;
     }
 
     /**
-     * @return \Tale\App\Environment
+     * @return Environment
      */
     public function getEnvironment()
     {
-        return $this->_environment;
+        return $this->environment;
     }
 
     /**
      * @return Queue
      */
-    public function getMiddlewareQueue()
+    public function getQueue()
     {
-        return $this->_middlewareQueue;
+        return $this->queue;
     }
 
     public function prepareMiddleware($middleware)
@@ -107,8 +107,7 @@ class App implements ContainerInterface, ConfigurableInterface, MiddlewareInterf
     public function append($middleware)
     {
 
-        $this->_middlewareQueue->append($this->prepareMiddleware($middleware));
-
+        $this->queue->append($this->prepareMiddleware($middleware));
         return $this;
     }
 
@@ -120,8 +119,7 @@ class App implements ContainerInterface, ConfigurableInterface, MiddlewareInterf
     public function prepend($middleware)
     {
 
-        $this->_middlewareQueue->prepend($this->prepareMiddleware($middleware));
-
+        $this->queue->prepend($this->prepareMiddleware($middleware));
         return $this;
     }
 
@@ -131,7 +129,7 @@ class App implements ContainerInterface, ConfigurableInterface, MiddlewareInterf
     )
     {
 
-        return Runtime::run($this->_middlewareQueue, $request, $response);
+        return Runtime::run($this->queue, $request, $response);
     }
 
     public function display(
@@ -144,16 +142,13 @@ class App implements ContainerInterface, ConfigurableInterface, MiddlewareInterf
     }
 
     /**
-     * @overrides MiddlewareTrait->handleRequest
+     * @param callable $next
      *
      * @return \Psr\Http\Message\ResponseInterface
      */
-    protected function handleRequest()
+    protected function handleRequest(callable $next)
     {
 
-        return $this->handleNext(null, $this->run(
-            $this->getRequest(),
-            $this->getResponse()
-        ));
+        return $next($this->request, $this->response);
     }
 }
